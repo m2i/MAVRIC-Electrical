@@ -342,6 +342,7 @@ try:
                             claw_a_val = 0
 
         #receive status data from rover
+        """
         try:
             if autonomous_map_center_pos == []:
                 autonomous_map_center_pos = (rover.gps.latitude, rover.gps.longitude)
@@ -350,8 +351,10 @@ try:
             autonomous_rover_heading = rover.gps.heading
         except:
             pass
+        """
 
         #display status data from rover
+        """
         try:
             temp_message = "Temperature: %0.2f C" % (rover.temperature)
             label = info_font.render(temp_message, 1, (255,255,0))
@@ -366,6 +369,7 @@ try:
             screen.blit(label, heading_label_draw_pos)
         except:
             pass
+        """
 
         #convert from joystick arcade drive to rover tank drive
         #   add condition to make backing up behave the way you'd expect (like a car)
@@ -383,7 +387,7 @@ try:
         #send commands to rover if safe to do so
         if not emergency_stop:
             rover.setWheels(drive_l, drive_r)
-            
+
             rover.setArmBaseRot(shoulder_r_axis)
             rover.setArmBasePitch(shoulder_p_axis)
             rover.setArmElbowPitch(elbow_p_val)
