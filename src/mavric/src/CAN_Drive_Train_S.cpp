@@ -2,7 +2,10 @@
 
 #include "ros/ros.h"
 #include "std_msgs/Float64.h"
+#include "std_msgs/Float64MultiArray.h"
+#include "mavric/Steer.h"
 #include "mavric/Drivetrain.h"
+#include "mavric/Steertrain.h"
 
 #include <algorithm>
 #include "ctre/Phoenix.h"
@@ -20,35 +23,25 @@ using namespace ctre::phoenix::unmanaged;
 using namespace ctre::phoenix::motorcontrol;
 using namespace ctre::phoenix::motorcontrol::can;
 
-
 double c_Scale = 0.4;
 double c_lfDir = 1;
-double c_lmDir = 1;
+double c_lmDir = -1;
 double c_lbDir = 1;
 double c_rfDir = -1;
 double c_rmDir = -1;
 double c_rbDir = -1;
-<<<<<<< HEAD
-=======
-double c_str_lfDir = 1;
-double c_str_lbDir = 1;
-double c_str_rfDir = 1;
-double c_str_rbDir = 1;
->>>>>>> 57566be7273ce2c8f52361557d5725e1678139fc
+double c_str_lfDir = -164;
+double c_str_lbDir = 164;
+double c_str_rfDir = 164;
+double c_str_rbDir = -164;
+double c_pitch = 1;
 
 double leftTarget = 0;
 double rightTarget = 0;
+double strLeftTarget = 0;
+double strRightTarget = 0;
+double pitchTarget = 0;
 
-<<<<<<< HEAD
-ros::Publisher lf_pub;
-ros::Publisher lm_pub;
-ros::Publisher lb_pub;
-ros::Publisher rf_pub;
-ros::Publisher rm_pub;
-ros::Publisher rb_pub;
-
-=======
->>>>>>> 57566be7273ce2c8f52361557d5725e1678139fc
 TalonSRX talon_lf(1);
 TalonSRX talon_lm(2);
 TalonSRX talon_lb(3);
@@ -56,50 +49,58 @@ TalonSRX talon_rf(4);
 TalonSRX talon_rm(5);
 TalonSRX talon_rb(6);
 
-<<<<<<< HEAD
-
-void driveCallback(const mavric::Drivetrain::ConstPtr &data)
-{
-	double dLeft = data->left;
-	double dRight = data->right;
-
-	if(dLeft > 100)
-		dLeft = 100;
-	if(dLeft < -100)
-		dLeft = -100;
-
-	if(dRight > 100)
-		dRight = 100;
-	if(dRight < -100)
-		dRight = -100;
-
-	leftTarget = dLeft / 100;
-	rightTarget = dRight / 100;
-}
-
-void setOutputs(double lf, double lm, double lb, double rf, double rm, double rb)
-{
-	talon_lf.Set(ControlMode::PercentOutput, lf*c_Scale*c_lfDir);
-	talon_lm.Set(ControlMode::PercentOutput, lm*c_Scale*c_lmDir);
-	talon_lb.Set(ControlMode::PercentOutput, lb*c_Scale*c_lbDir);
-	talon_rf.Set(ControlMode::PercentOutput, rf*c_Scale*c_rfDir);
-	talon_rm.Set(ControlMode::PercentOutput, rm*c_Scale*c_rmDir);
-	talon_rb.Set(ControlMode::PercentOutput, rb*c_Scale*c_rbDir);
-}
-
-double rampVal(double current, double target, double rampAmountUp, double rampAmountDown)
-{
-=======
 TalonSRX talon_str_lf(7);
 TalonSRX talon_str_lb(8);
 TalonSRX talon_str_rf(9);
 TalonSRX talon_str_rb(10);
 
-void strCallback(const std_msgs::Float64::ConstPtr & data)
+TalonSRX talon_pitch(11);
+
+ErrorCode sen1 = talon_str_lf.ConfigSelectedFeedbackSensor(QuadEncoder, 0, 0);
+ErrorCode sen2 = talon_str_lb.ConfigSelectedFeedbackSensor(QuadEncoder, 0, 0);
+ErrorCode sen3 = talon_str_rf.ConfigSelectedFeedbackSensor(QuadEncoder, 0, 0);
+ErrorCode sen4 = talon_str_rb.ConfigSelectedFeedbackSensor(QuadEncoder, 0, 0);
+
+//ErrorCode cur1 = talon_str_lf.ConfigPeakCurrentLimit(7, 0);
+//ErrorCode cur2 = talon_str_lb.ConfigPeakCurrentLimit(7, 0);
+//ErrorCode cur3 = talon_str_rf.ConfigPeakCurrentLimit(7, 0);
+//ErrorCode cur4 = talon_str_rb.ConfigPeakCurrentLimit(7, 0);
+
+SensorCollection lf_FB = talon_str_lf.GetSensorCollection();
+SensorCollection lb_FB = talon_str_lb.GetSensorCollection();
+SensorCollection rf_FB = talon_str_rf.GetSensorCollection();
+SensorCollection rb_FB = talon_str_rb.GetSensorCollection();
+
+ErrorCode cal1 = lf_FB.SetQuadraturePosition(0, 0);
+ErrorCode cal2 = lb_FB.SetQuadraturePosition(0, 0);
+ErrorCode cal3 = rf_FB.SetQuadraturePosition(0, 0);
+ErrorCode cal4 = rb_FB.SetQuadraturePosition(0, 0);
+
+void strpub(const ros::Publisher pub)
 {
-	double str = data->data;
-	int stri = (int) str;
-	talon_str_lf.Set(ControlMode::Position, stri);
+	mavric::Steer value;
+	value.lf = lf_FB.GetQuadraturePosition();
+	value.lb = lb_FB.GetQuadraturePosition();
+	value.rf = rf_FB.GetQuadraturePosition();
+	value.rb = rb_FB.GetQuadraturePosition();
+	pub.publish(value);
+}
+
+void strCallback(const mavric::Steertrain::ConstPtr &data)
+{
+	double sleft = data->strLeft;
+	if (sleft > 100)
+		sleft = 100;
+	if (sleft < -100)
+		sleft = -100;
+	strLeftTarget = (int)sleft;
+
+	double sright = data->strRight;
+	if (sright > 100)
+		sright = 100;
+	if (sright < -100)
+		sright = -100;
+	strRightTarget = (int)sright;
 }
 
 void driveCallback(const mavric::Drivetrain::ConstPtr &data)
@@ -107,64 +108,84 @@ void driveCallback(const mavric::Drivetrain::ConstPtr &data)
 	double dLeft = data->left;
 	double dRight = data->right;
 
-	if(dLeft > 100)
+	if (dLeft > 100)
 		dLeft = 100;
-	if(dLeft < -100)
+	if (dLeft < -100)
 		dLeft = -100;
 
-	if(dRight > 100)
+	if (dRight > 100)
 		dRight = 100;
-	if(dRight < -100)
+	if (dRight < -100)
 		dRight = -100;
 
 	leftTarget = dLeft / 100;
 	rightTarget = dRight / 100;
 }
 
+void pitchCallback(const mavric::Drivetrain::ConstPtr &data)
+{
+	double pitch = data->data;
+
+	if (pitch > 100)
+		pitch = 100;
+	if (pitch < -100)
+		pitch = -100;
+
+	pitchTarget = pitch;
+}
+
 void setOutputs(double lf, double lm, double lb, double rf, double rm, double rb, double str_lf, double str_lb, double str_rf, double str_rb)
 {
-	talon_lf.Set(ControlMode::PercentOutput, lf*c_Scale*c_lfDir);
-	talon_lm.Set(ControlMode::PercentOutput, lm*c_Scale*c_lmDir);
-	talon_lb.Set(ControlMode::PercentOutput, lb*c_Scale*c_lbDir);
-	talon_rf.Set(ControlMode::PercentOutput, rf*c_Scale*c_rfDir);
-	talon_rm.Set(ControlMode::PercentOutput, rm*c_Scale*c_rmDir);
-	talon_rb.Set(ControlMode::PercentOutput, rb*c_Scale*c_rbDir);
+	talon_lf.Set(ControlMode::PercentOutput, lf * c_Scale * c_lfDir);
+	talon_lm.Set(ControlMode::PercentOutput, lm * c_Scale * c_lmDir);
+	talon_lb.Set(ControlMode::PercentOutput, lb * c_Scale * c_lbDir);
+	talon_rf.Set(ControlMode::PercentOutput, rf * c_Scale * c_rfDir);
+	talon_rm.Set(ControlMode::PercentOutput, rm * c_Scale * c_rmDir);
+	talon_rb.Set(ControlMode::PercentOutput, rb * c_Scale * c_rbDir);
 
-	talon_str_lf.Set(ControlMode::Position, str_lf*c_Scale*c_str_lfDir);
-	talon_str_lb.Set(ControlMode::Position, str_lb*c_Scale*c_str_lbDir);
-	talon_str_rf.Set(ControlMode::Position, str_rf*c_Scale*c_str_rfDir);
-	talon_str_rb.Set(ControlMode::Position, str_rb*c_Scale*c_str_rbDir);
+	talon_str_lf.Set(ControlMode::Position, str_lf * c_str_lfDir);
+	talon_str_lb.Set(ControlMode::Position, str_lb * c_str_lbDir);
+	talon_str_rf.Set(ControlMode::Position, str_rf * c_str_rfDir);
+	talon_str_rb.Set(ControlMode::Position, str_rb * c_str_rbDir);
 }
 
 double rampVal(double current, double target, double rampAmountUp, double rampAmountDown)
 {
->>>>>>> 57566be7273ce2c8f52361557d5725e1678139fc
-	if(current == target)
+	if (current == target)
 		return target;
 
-	if(current >= 0 && target > 0)
+	if (current >= 0 && target > 0)
 	{
-		if(current < target)
+		if (current < target)
 		{
-			current += min(rampAmountUp, target-current);
-		} else {
-			current -= min(rampAmountDown, current-target);
+			current += min(rampAmountUp, target - current);
 		}
-	} else if(current > 0 && target <= 0)
-	{
-		current -= min(rampAmountDown, current-target);
-	} else if(current <= 0 && target < 0)
-	{
-		if(current > target)
+		else
 		{
-			current -= min(rampAmountUp, current-target);
-		} else {
-			current += min(rampAmountDown, target-current);
+			current -= min(rampAmountDown, current - target);
 		}
-	} else if(current < 0 && target >= 0)
+	}
+	else if (current > 0 && target <= 0)
 	{
-		current += min(rampAmountDown, target-current);
-	} else {
+		current -= min(rampAmountDown, current - target);
+	}
+	else if (current <= 0 && target < 0)
+	{
+		if (current > target)
+		{
+			current -= min(rampAmountUp, current - target);
+		}
+		else
+		{
+			current += min(rampAmountDown, target - current);
+		}
+	}
+	else if (current < 0 && target >= 0)
+	{
+		current += min(rampAmountDown, target - current);
+	}
+	else
+	{
 		printf("case missed (%lf -> %lf)", current, target);
 		current = target;
 	}
@@ -176,9 +197,15 @@ int main(int argc, char **argv)
 {
 	double left = 0;
 	double right = 0;
+	double strLeft = 0;
+	double strRight = 0;
+	double strRight = 0;
+	double pitch = 0;
 
 	double rampRateUp = 0.5;
 	double rampRateDown = 0.5;
+	double strRateUp = 1;
+	double strRateDown = 1;
 
 	ros::init(argc, argv, "CAN_DTS");
 
@@ -187,10 +214,9 @@ int main(int argc, char **argv)
 
 	ros::NodeHandle n;
 	ros::Subscriber sub = n.subscribe("Drive_Train", 1000, driveCallback);
-<<<<<<< HEAD
-=======
-	ros::Subscriber str_sub = n.subscribe("Steer", 1000, strCallback);
->>>>>>> 57566be7273ce2c8f52361557d5725e1678139fc
+	ros::Subscriber str_sub = n.subscribe("Steer_Train", 1000, strCallback);
+	ros::Subscriber str_sub = n.subscribe("Pitch_Train", 1000, pitchCallback);
+	ros::Publisher str_pub = n.advertise<mavric::Steer>("Steer_Feedback", 1000);
 
 	//ros::Service("SetProtection", SetBool, changeProtection);
 
@@ -201,32 +227,36 @@ int main(int argc, char **argv)
 	ros::param::get("~Right_Front/Scale", c_rfDir);
 	ros::param::get("~Right_Middle/Scale", c_rmDir);
 	ros::param::get("~Right_Back/Scale", c_rbDir);
+	ros::param::get("~Pitch/Scale", c_pitch);
 	ros::param::get("~ramp_rate_up", rampRateUp);
 	ros::param::get("~ramp_rate_down", rampRateDown);
+	ros::param::get("~str_ramp_rate_up", strRateUp);
+	ros::param::get("~str_ramp_rate_down", strRateDown);
 
-<<<<<<< HEAD
-	setOutputs(0,0,0, 0,0,0);
-=======
-	setOutputs(0,0,0, 0,0,0, 0,0,0,0);
->>>>>>> 57566be7273ce2c8f52361557d5725e1678139fc
+	setOutputs(0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
 
 	ros::Rate r(100);
-	while(ros::ok())
+	while (ros::ok())
 	{
 		ctre::phoenix::unmanaged::FeedEnable(200);
 		ros::spinOnce();
 
-		if(left != leftTarget || right != rightTarget)
+		if (left != leftTarget || right != rightTarget || strLeft != strLeftTarget || strRight != strRightTarget)
 		{
 			left = rampVal(left, leftTarget, rampRateUp, rampRateDown);
 			right = rampVal(right, rightTarget, rampRateUp, rampRateDown);
-<<<<<<< HEAD
-			setOutputs(left, left, left, right, right, right);
-=======
-			setOutputs(left, left, left, right, right, right, 0,0,0,0);
->>>>>>> 57566be7273ce2c8f52361557d5725e1678139fc
+			strLeft = rampVal(strLeft, strLeftTarget, strRateUp, strRateDown);
+			strRight = rampVal(strRight, strRightTarget, strRateUp, strRateDown);
+			setOutputs(left, left, left, right, right, right, strLeft, strLeft, strRight, strRight);
 		}
 
+		if (pitch != pitchTarget)
+		{
+			pitch = rampVal(pitch, pitchTarget, rampRateUp, rampRateDown);
+			talon_lf.Set(ControlMode::PercentOutput, pitch * c_Scale * c_lfDir);
+		}
+
+		strpub(str_pub);
 		r.sleep();
 	}
 
