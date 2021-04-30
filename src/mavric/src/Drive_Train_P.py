@@ -29,45 +29,44 @@ print (port)#", line 228, in meth
 #    return getattr(self._sock,name)(*args)
 
 def talker():
-	global enabled
+    global enabled
+    pub = rospy.Publisher("Drive_Train", Drivetrain, queue_size=10)
+    rospy.init_node('DTP')
+    port = rospy.get_param("~port", 8001)
+    print(port)
+    serversocket.bind(('', port))
+    serversocket.listen(1)
+    rospy.loginfo('server started')
+    while not rospy.is_shutdown():
+        connection, address = serversocket.accept()
+        data = connection.recv(1024).decode()
+        rospy.loginfo(data)
+        if (data[0] == 'D'):
+            # Drive Command
+            parameters = data[1:].strip().split(',')
+            rospy.loginfo(parameters)
 
-        pub = rospy.Publisher("Drive_Train", Drivetrain, queue_size=10)
-        rospy.init_node('DTP')
-        port = rospy.get_param("~port", 8001)
-        print(port)
-        serversocket.bind(('', port))
-        serversocket.listen(1)
-        rospy.loginfo('server started')
-        while not rospy.is_shutdown():
-                connection, address = serversocket.accept()
-                data = connection.recv(1024).decode()
-                rospy.loginfo(data)
-                if (data[0] == 'D'):
-                        # Drive Command
-                        parameters = data[1:].strip().split(',')
-                        rospy.loginfo(parameters)
-                        
-                        if enabled:
-                                left = float(parameters[0])
-                                right = float(parameters[1])
-                                pub.publish(left, right)
+            if enabled:
+                left = float(parameters[0])
+                right = float(parameters[1])
+                pub.publish(left, right)
 
-                elif (data[0] == 'N'):
-                        # Autonomous Command
-                        if data[1] == 'E':
-                                #enable autonomous, disable drive
-                                enabled = False
+        elif (data[0] == 'N'):
+            # Autonomous Command
+            if data[1] == 'E':
+                #enable autonomous, disable drive
+                enabled = False
 
-                        elif data[1] == 'D':
-                                #disable autonomous, enable drive
-                                enabled = True
-                
-                connection.close()
-        serversocket.close()
+            elif data[1] == 'D':
+                #disable autonomous, enable drive
+                enabled = True
+
+        connection.close()
+    serversocket.close()
 
 
 if __name__ == '__main__':
-        try:
-                talker()
-        except rospy.ROSInterruptException:
-                pass
+    try:
+        talker()
+    except rospy.ROSInterruptException:
+        pass

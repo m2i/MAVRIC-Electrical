@@ -45,6 +45,7 @@ def talker():
 
     while not rospy.is_shutdown():
         connection, address = serversocket.accept()
+        print(address)
         data = connection.recv(1024).decode()
 
         if(data == ''):
