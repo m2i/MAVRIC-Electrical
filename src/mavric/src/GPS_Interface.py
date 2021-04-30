@@ -33,7 +33,7 @@ def callback(data):
 
 def talker():
 	rospy.init_node('GPS_Interface')
-        rospy.Subscriber("GPS_Data", GPS, callback, queue_size=10)
+    rospy.Subscriber("GPS_Data", GPS, callback, queue_size=10)
 	serversocket.bind((host, port))
 	serversocket.listen(1)
 	rospy.loginfo('server started')

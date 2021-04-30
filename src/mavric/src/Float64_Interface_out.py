@@ -24,13 +24,13 @@ def callback(data):
                         print('%d clients remain\n' % len(clients))
 
 def talker():
-	rospy.init_node('Float64_Interface_Out')
-        rospy.Subscriber("value", Float64, callback, queue_size=10)
-        serversocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        serversocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        port = rospy.get_param("~port", -1)
-        if port == -1:
-                raise ValueError("port not set")
+    rospy.init_node('Float64_Interface_Out')
+    rospy.Subscriber("value", Float64, callback, queue_size=10)
+    serversocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    serversocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    port = rospy.get_param("~port", -1)
+    if port == -1:
+            raise ValueError("port not set")
 	serversocket.bind(("", port))
 	serversocket.listen(1)
 	rospy.loginfo('server started')
